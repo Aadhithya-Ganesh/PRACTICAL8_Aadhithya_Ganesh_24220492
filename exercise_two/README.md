@@ -1,4 +1,4 @@
-# Exercise One: Setup UserService and BookService
+# Exercise Three: Setup Borrow service and change user-service
 
 ## Instructions
 
