@@ -11,7 +11,7 @@ minikube start
 **Apply the deployments in the right order**
 
 ```bash
-cd ..
+cd kubernetes
 ```
 
 ```bash
