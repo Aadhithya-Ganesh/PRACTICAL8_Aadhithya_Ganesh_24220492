@@ -1,4 +1,4 @@
-# Exercise Three: Setup Borrow service and change user-service
+# Exercise Two: Setup Borrow service and change user-service
 
 ## Instructions
 
