@@ -1,4 +1,4 @@
-# Exercise One: Setup UserService and BookService
+# Exercise Three: Kubernetes deployments
 
 ## Instructions
 
