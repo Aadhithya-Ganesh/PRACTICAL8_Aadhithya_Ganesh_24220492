@@ -74,10 +74,10 @@ curl --location 'localhost:5002/users/all'
 ```bash
 curl --location 'localhost:5006/books/add' \
 --header 'Content-Type: application/json' \
---data '{ ^
-    "bookid" : "6", ^
-    "author" : "Aravind", ^
-    "title" : "Biology" ^
+--data '{
+    "bookid" : "6",
+    "author" : "Aravind",
+    "title" : "Biology"
 }'
 ```
 
@@ -92,9 +92,9 @@ curl --location 'localhost:5006/books/all'
 ```bash
 curl --location 'localhost:5002/users/borrow/request' \
 --header 'Content-Type: application/json' \
---data '{ ^
-    "studentid": "1", ^
-    "bookid": "6" ^
+--data '{
+    "studentid": "1",
+    "bookid": "6"
 }'
 ```
 
