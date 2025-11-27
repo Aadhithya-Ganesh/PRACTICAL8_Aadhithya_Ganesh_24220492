@@ -1,0 +1,68 @@
+services:
+  rabbitmq:
+    image: "rabbitmq:3.13-rc-management"
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    env_file:
+      - .env
+    networks:
+      - backend
+
+  user-service:
+    image: aadhithya123/user-service
+    container_name: UserService
+    ports:
+      - "5002:5002"
+    env_file:
+      - .env
+    networks:
+      - backend
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+
+  book-service:
+    image: aadhithya123/book-service
+    container_name: BookService
+    ports:
+      - "5006:5006"
+    env_file:
+      - .env
+    networks:
+      - backend
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+
+  borrow-service:
+    image: aadhithya123/borrow-service
+    container_name: BorrowService
+    ports:
+      - "5003:5003"
+    env_file:
+      - .env
+    networks:
+      - backend
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+
+  database:
+    image: postgres:18-alpine
+    container_name: db
+    env_file:
+      - .env
+    networks:
+      - backend
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+
+networks:
+  backend:
+
+volumes:
+  postgres-data:
