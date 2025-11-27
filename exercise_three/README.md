@@ -36,7 +36,7 @@ kubectl apply \
     -f user-service-service.yaml
 ```
 
-**Setup port forwarding to the 3 services**
+**Setup port forwarding to the 3 services. You have to use 3 different terminals for this**
 
 ```bash
 kubectl port-forward service/user-service 5002:5002
