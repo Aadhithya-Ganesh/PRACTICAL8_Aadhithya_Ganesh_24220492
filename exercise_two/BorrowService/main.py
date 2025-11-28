@@ -3,7 +3,7 @@ from flask import Flask, json, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 import os
 import pika
-import requests 
+import requests
 import sys
 
 db_user = os.getenv('POSTGRES_USER')
@@ -29,6 +29,7 @@ with app.app_context():
     db.create_all()
 
 def start_consumer():
+
     credentials = pika.PlainCredentials(
     os.getenv("RABBITMQ_DEFAULT_USER"),
     os.getenv("RABBITMQ_DEFAULT_PASS")
@@ -58,7 +59,7 @@ def start_consumer():
                     return
 
                 # Fetch book
-                book = requests.get(f"http://borrow-service:5006/books/{bookid}")
+                book = requests.get(f"http://book-service:5006/books/{bookid}")
                 if book.status_code != 200:
                     print("Book not found")
                     ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -84,24 +85,34 @@ def start_consumer():
                 print("Error processing message:", e)
                 ch.basic_ack(delivery_tag=method.delivery_tag)
 
-    try:
-        channel.basic_consume(queue='borrow_book', on_message_callback=borrowBook, auto_ack=False)
-        channel.start_consuming()
-    except pika.exceptions.AMQPConnectionError as e:
-        print("Lost connection to RabbitMQ, exiting...")
-        os._exit(1)
+    channel.basic_consume(queue='borrow_book', on_message_callback=borrowBook, auto_ack=False)
 
+    channel.start_consuming()
 
 @app.route("/borrow/<studentid>", methods=["GET"])
 def borrowed_books(studentid):
     entries = Borrow.query.filter_by(studentid=studentid).all()
     return jsonify([e.to_dict() for e in entries])
 
+def check_rabbit_or_die():
+    credentials = pika.PlainCredentials(
+        os.getenv("RABBITMQ_DEFAULT_USER"),
+        os.getenv("RABBITMQ_DEFAULT_PASS")
+    )
+    try:
+        conn = pika.BlockingConnection(
+            pika.ConnectionParameters("rabbitmq", 5672, "/", credentials)
+        )
+        conn.close()
+    except pika.exceptions.AMQPConnectionError as e:
+        print("RabbitMQ not reachable at startup, exiting...", e)
+        os._exit(1)
+
 
 if __name__ == "__main__":
+    check_rabbit_or_die()
     import threading
     consumer_thread = threading.Thread(target=start_consumer, daemon=True)
     consumer_thread.start()
+    
     app.run(host="0.0.0.0", port=5003)
-
-
