@@ -2,7 +2,7 @@
 
 ## Instructions
 
-**Start the services**
+**Start Minikube**
 
 ```bash
 minikube start
