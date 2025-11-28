@@ -29,76 +29,88 @@ with app.app_context():
     db.create_all()
 
 def start_consumer():
-    try:
-        credentials = pika.PlainCredentials(
-        os.getenv("RABBITMQ_DEFAULT_USER"),
-        os.getenv("RABBITMQ_DEFAULT_PASS")
-        )
 
-        connection = pika.BlockingConnection(
-            pika.ConnectionParameters("rabbitmq", 5672, "/", credentials)
-        )
-        channel = connection.channel()
-        channel.queue_declare(queue='borrow_book')
-        channel.basic_qos(prefetch_count=1)
+    credentials = pika.PlainCredentials(
+    os.getenv("RABBITMQ_DEFAULT_USER"),
+    os.getenv("RABBITMQ_DEFAULT_PASS")
+    )
 
-        def borrowBook(ch, method, properties, body):
-            with app.app_context():
-                try:
-                    print(f"Received {body.decode()}")
-                    payload = json.loads(body.decode())
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters("rabbitmq", 5672, "/", credentials)
+    )
+    channel = connection.channel()
+    channel.queue_declare(queue='borrow_book')
+    channel.basic_qos(prefetch_count=1)
 
-                    studentid = payload["studentid"]
-                    bookid = payload["bookid"]
+    def borrowBook(ch, method, properties, body):
+        with app.app_context():
+            try:
+                print(f"Received {body.decode()}")
+                payload = json.loads(body.decode())
 
-                    # Fetch user
-                    user = requests.get(f"http://user-service.default:5002/users/{studentid}")
-                    if user.status_code != 200:
-                        print("User not found")
-                        ch.basic_ack(delivery_tag=method.delivery_tag)
-                        return
+                studentid = payload["studentid"]
+                bookid = payload["bookid"]
 
-                    # Fetch book
-                    book = requests.get(f"http://book-service.default:5006/books/{bookid}")
-                    if book.status_code != 200:
-                        print("Book not found")
-                        ch.basic_ack(delivery_tag=method.delivery_tag)
-                        return
-
-                    # Borrow limit check
-                    count = Borrow.query.filter_by(studentid=studentid).count()
-                    if count >= 5:
-                        print("Borrow limit exceeded")
-                        ch.basic_ack(delivery_tag=method.delivery_tag)
-                        return
-
-                    # Create borrow record
-                    borrow = Borrow(studentid=studentid, bookid=bookid)
-                    db.session.add(borrow)
-                    db.session.commit()
-
-                    print(f"Borrow entry saved: {payload}")
-
+                # Fetch user
+                user = requests.get(f"http://user-service.default:5002/users/{studentid}")
+                if user.status_code != 200:
+                    print("User not found")
                     ch.basic_ack(delivery_tag=method.delivery_tag)
+                    return
 
-                except Exception as e:
-                    print("Error processing message:", e)
+                # Fetch book
+                book = requests.get(f"http://book-service.default:5006/books/{bookid}")
+                if book.status_code != 200:
+                    print("Book not found")
                     ch.basic_ack(delivery_tag=method.delivery_tag)
+                    return
 
-        channel.basic_consume(queue='borrow_book', on_message_callback=borrowBook, auto_ack=False)
+                # Borrow limit check
+                count = Borrow.query.filter_by(studentid=studentid).count()
+                if count >= 5:
+                    print("Borrow limit exceeded")
+                    ch.basic_ack(delivery_tag=method.delivery_tag)
+                    return
 
-        channel.start_consuming()
-    except Exception as e:
-        print(f"FATAL: Failed to connect to RabbitMQ: {e}")
-        sys.exit(1)
+                # Create borrow record
+                borrow = Borrow(studentid=studentid, bookid=bookid)
+                db.session.add(borrow)
+                db.session.commit()
+
+                print(f"Borrow entry saved: {payload}")
+
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+
+            except Exception as e:
+                print("Error processing message:", e)
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    channel.basic_consume(queue='borrow_book', on_message_callback=borrowBook, auto_ack=False)
+
+    channel.start_consuming()
 
 @app.route("/borrow/<studentid>", methods=["GET"])
 def borrowed_books(studentid):
     entries = Borrow.query.filter_by(studentid=studentid).all()
     return jsonify([e.to_dict() for e in entries])
 
+def check_rabbit_or_die():
+    credentials = pika.PlainCredentials(
+        os.getenv("RABBITMQ_DEFAULT_USER"),
+        os.getenv("RABBITMQ_DEFAULT_PASS")
+    )
+    try:
+        conn = pika.BlockingConnection(
+            pika.ConnectionParameters("rabbitmq", 5672, "/", credentials)
+        )
+        conn.close()
+    except pika.exceptions.AMQPConnectionError as e:
+        print("RabbitMQ not reachable at startup, exiting...", e)
+        os._exit(1)
+
 
 if __name__ == "__main__":
+    check_rabbit_or_die()
     import threading
     consumer_thread = threading.Thread(target=start_consumer, daemon=True)
     consumer_thread.start()

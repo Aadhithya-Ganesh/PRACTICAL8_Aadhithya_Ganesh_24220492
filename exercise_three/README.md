@@ -15,25 +15,7 @@ cd kubernetes
 ```
 
 ```bash
-kubectl apply \
-    -f rabbitmq-deployment.yaml \
-    -f rabbitmq-service.yaml \
-    -f env-configmap.yaml
-```
-
-**Wait a while**
-
-```bash
-kubectl apply \
-    -f book-service-deployment.yaml \
-    -f book-service-service.yaml \
-    -f borrow-service-deployment.yaml \
-    -f borrow-service-service.yaml \
-    -f database-deployment.yaml \
-    -f database-service.yaml \
-    -f postgres-data-persistentvolumeclaim.yaml \
-    -f user-service-deployment.yaml \
-    -f user-service-service.yaml
+kubectl apply -f .
 ```
 
 **Setup port forwarding to the 3 services. You have to use 3 different terminals for this**

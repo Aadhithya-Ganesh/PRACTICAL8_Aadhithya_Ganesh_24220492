@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 import pika
 import requests 
+import sys
 
 db_user = os.getenv('POSTGRES_USER')
 db_password = os.getenv('POSTGRES_PASSWORD')
@@ -83,9 +84,12 @@ def start_consumer():
                 print("Error processing message:", e)
                 ch.basic_ack(delivery_tag=method.delivery_tag)
 
-    channel.basic_consume(queue='borrow_book', on_message_callback=borrowBook, auto_ack=False)
-
-    channel.start_consuming()
+    try:
+        channel.basic_consume(queue='borrow_book', on_message_callback=borrowBook, auto_ack=False)
+        channel.start_consuming()
+    except pika.exceptions.AMQPConnectionError as e:
+        print("Lost connection to RabbitMQ, exiting...")
+        os._exit(1)
 
 
 @app.route("/borrow/<studentid>", methods=["GET"])
